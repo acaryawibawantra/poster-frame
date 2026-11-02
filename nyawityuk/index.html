@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#12281a">
+<title>NyawitYuk — Menanam Sawit</title>
+<style>
+  :root{
+    --ink:#0d1f14; --leaf:#2f7d4f; --leaf-2:#3f9c63; --soil:#2a1a10; --gold:#f2b544;
+    --panel:rgba(9,24,16,.86); --line:rgba(255,255,255,.14); --text:#eaf4ec; --muted:#a9c3b1;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{margin:0;height:100%;background:#0a1a11;color:var(--text);overflow:hidden;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif}
+  #app{position:relative;width:100vw;height:100vh;display:grid;place-items:center}
+  canvas{display:block;background:#183a26;touch-action:none}
+
+  /* HUD */
+  .hud{position:absolute;top:0;left:0;right:0;padding:10px 12px;display:flex;gap:8px;
+    align-items:flex-start;justify-content:space-between;pointer-events:none;z-index:5}
+  .stats{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:7px 11px;font-size:12.5px;font-weight:600;backdrop-filter:blur(8px);
+    display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip b{color:var(--gold);font-variant-numeric:tabular-nums}
+  .chip.tree b{color:#9fd6a8}
+  .chip.palm b{color:#8fd3ff}
+  .chip.alert{border-color:#e07a5f;color:#ffd9cf}
+  .btn{pointer-events:auto;border:1px solid var(--line);background:var(--panel);color:var(--text);
+    border-radius:12px;padding:9px 13px;font-size:13px;font-weight:700;cursor:pointer;
+    backdrop-filter:blur(8px)}
+  .btn:active{transform:scale(.97)}
+  .btn.gold{background:linear-gradient(#f6c25b,#e09b21);color:#2a1a05;border-color:#f6c25b}
+  .btn:disabled{opacity:.45}
+
+  /* toast + events */
+  #toasts{position:absolute;left:50%;top:64px;transform:translateX(-50%);display:grid;gap:8px;
+    justify-items:center;z-index:7;pointer-events:none;width:min(92vw,520px)}
+  .toast{background:rgba(8,22,14,.92);border:1px solid var(--line);border-radius:14px;
+    padding:10px 14px;font-size:13px;font-weight:600;animation:pop .25s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:none}}
+
+  /* shop */
+  .sheet{position:absolute;inset:0;background:rgba(3,10,6,.72);backdrop-filter:blur(6px);
+    display:none;place-items:center;z-index:20;padding:16px}
+  .sheet.open{display:grid}
+  .panel{width:min(560px,100%);max-height:86vh;overflow:auto;background:#0f2418;
+    border:1px solid var(--line);border-radius:20px;padding:18px}
+  .panel h2{margin:0 0 4px;font-size:19px;letter-spacing:-.02em}
+  .panel p.sub{margin:0 0 14px;color:var(--muted);font-size:12.5px}
+  .item{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);
+    border-radius:14px;margin-bottom:9px;background:rgba(255,255,255,.03)}
+  .item .ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+    background:rgba(255,255,255,.06);font-size:19px;flex:none}
+  .item .body{flex:1;min-width:0}
+  .item .name{font-size:13.5px;font-weight:700}
+  .item .desc{font-size:11.5px;color:var(--muted);line-height:1.35;margin-top:2px}
+  .item .price{font-size:13px;font-weight:800;color:var(--gold);margin-top:3px}
+  .item .buy{flex:none}
+  .close{position:sticky;top:0;float:right}
+  .tabs{display:flex;gap:6px;margin-bottom:12px}
+  .tab{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);
+    border-radius:11px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer}
+  .tab.active{background:var(--leaf);border-color:var(--leaf-2)}
+
+  /* controls */
+  .pad{position:absolute;bottom:16px;left:16px;display:grid;grid-template-columns:repeat(3,52px);
+    grid-template-rows:repeat(3,52px);gap:6px;z-index:6}
+  .pad button{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    color:var(--text);font-size:18px;font-weight:700;backdrop-filter:blur(8px)}
+  .pad button:active{background:rgba(47,125,79,.55)}
+  .act{position:absolute;bottom:26px;right:20px;z-index:6}
+  .act button{width:84px;height:84px;border-radius:50%;border:1px solid #f6c25b;
+    background:radial-gradient(circle at 35% 30%,#ffd77a,#e09b21);color:#2a1a05;
+    font-size:13px;font-weight:900;letter-spacing:.02em;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .act button:active{transform:scale(.95)}
+  @media (min-width:820px){ .pad{opacity:.9} }
+
+  .hint{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);font-size:11.5px;
+    color:var(--muted);z-index:4;pointer-events:none;text-align:center;line-height:1.4}
+  @media (max-width:520px){ .hint{display:none} }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+
+  <div class="hud">
+    <div class="stats">
+      <div class="chip">Uang <b id="s-money">0</b></div>
+      <div class="chip tree">Tebang <b id="s-chopped">0</b></div>
+      <div class="chip palm">Sawit <b id="s-palms">0</b></div>
+      <div class="chip" id="s-tool">Kapak</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" id="btn-mute">🔊</button>
+      <button class="btn gold" id="btn-shop">Toko</button>
+    </div>
+  </div>
+
+  <div id="toasts"></div>
+
+  <div class="pad">
+    <span></span><button data-dir="up">▲</button><span></span>
+    <button data-dir="left">◀</button><span></span><button data-dir="right">▶</button>
+    <span></span><button data-dir="down">▼</button><span></span>
+  </div>
+  <div class="act"><button id="btn-act">TEBANG</button></div>
+
+  <div class="hint">WASD / panah untuk jalan · SPASI / tombol Tebang untuk menebang & menanam</div>
+
+  <div class="sheet" id="shop">
+    <div class="panel">
+      <button class="btn close" id="btn-close">Tutup</button>
+      <h2>Toko & Kebun</h2>
+      <p class="sub">Tebang hutan → dapat uang → beli alat → tanam sawit → panen. Warga sekitar juga minta bagian.</p>
+      <div class="tabs">
+        <button class="tab active" data-tab="alat">Alat</button>
+        <button class="tab" data-tab="bibit">Bibit</button>
+        <button class="tab" data-tab="warga">Warga</button>
+      </div>
+      <div id="shop-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  // ---------- konstanta ----------
+  const COLS = 20, ROWS = 13, TS = 48;      // tile size logis
+  const W = COLS * TS, H = ROWS * TS;
+  const SAVE_KEY = "nyawityuk.v1";
+
+  const TOOLS = {
+    kapak:     { name:"Kapak",     icon:"🪓", dmg:1, price:0,   perUse:0,  desc:"Alat awal. 3 tebasan per pohon." },
+    pemotong:  { name:"Pemotong",  icon:"🪚", dmg:4, price:120, perUse:0,  desc:"Chainsaw. 1 tebasan per pohon." },
+    api:       { name:"Api",       icon:"🔥", dmg:5, price:260, perUse:10, desc:"Bakar 5×5 petak sekaligus. Biaya 10/uap." },
+    traktor:   { name:"Traktor",   icon:"🚜", dmg:9, price:650, perUse:25, desc:"Bersihkan 5×5 instan. Biaya 25/pakai." },
+  };
+  const ORDER = ["kapak","pemotong","api","traktor"];
+  const BIBIT_PRICE = 30, PANEN_HASIL = 65, TREE_VALUE = 9;
+  const GROW_STAGE = [0, 12, 26, 40];        // detik: 0 benih, 12 tumbuh, 26 muda, 40 siap panen
+  const DEMO_EVERY = 10;                      // tiap 10 pohon → demo warga
+
+  const cv = document.getElementById("cv");
+  const ctx = cv.getContext("2d");
+
+  // ---------- state ----------
+  let S = null;
+  function newState(){
+    const tiles = [];
+    for (let y = 0; y < ROWS; y++){
+      const row = [];
+      for (let x = 0; x < COLS; x++){
+        const edge = x < 2 || y < 2 || x > COLS - 3 || y > ROWS - 3;
+        const r = Math.random();
+        let t = "tree";
+        if (edge && r < 0.18) t = "dirt";
+        else if (!edge && r < 0.10) t = "dirt";
+        row.push({ type: t, hp: t === "tree" ? 3 : 0, grow: 0, blocked: 0 });
+      }
+      tiles.push(row);
+    }
+    // lapangan kecil di tengah supaya pemain bisa mulai
+    for (let y = 5; y <= 7; y++) for (let x = 8; x <= 11; x++) tiles[y][x] = { type:"dirt", hp:0, grow:0, blocked:0 };
+    return {
+      money: 0, chopped: 0, palms: 0, harvest: 0,
+      tool: "kapak", owned: { kapak:true },
+      bibit: 0, tiles,
+      px: 9.5, py: 6.5, facing: "down", anim: 0,
+      demo: null, demoPaid: 0, nextDemoAt: DEMO_EVERY,
+      muted: false, t: 0, best: 0
+    };
+  }
+
+  function load(){
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      const d = JSON.parse(raw);
+      if (!d || !Array.isArray(d.tiles) || d.tiles.length !== ROWS) return null;
+      return Object.assign(newState(), d);
+    } catch { return null; }
+  }
+  function save(){
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        money:S.money, chopped:S.chopped, palms:S.palms, harvest:S.harvest, tool:S.tool,
+        owned:S.owned, bibit:S.bibit, tiles:S.tiles, px:S.px, py:S.py, facing:S.facing,
+        demo:S.demo, demoPaid:S.demoPaid, nextDemoAt:S.nextDemoAt, muted:S.muted, best:S.best
+      }));
+    } catch {}
+  }
+
+  // ---------- util ----------
+  const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+  const tileAt = (x,y) => (x<0||y<0||x>=COLS||y>=ROWS) ? null : S.tiles[y][x];
+  const isSolid = t => t && (t.type === "tree" || t.type === "palm" || (t.type === "sapling" && t.grow < GROW_STAGE[2]));
+  const rupiah = n => "Rp" + Math.round(n).toLocaleString("id-ID");
+
+  function toast(msg, ms = 2200){
+    const box = document.getElementById("toasts");
+    if (box.lastElementChild && box.lastElementChild.textContent === msg) return;  // dedupe
+    const el = document.createElement("div");
+    el.className = "toast";
+    el.textContent = msg;
+    box.appendChild(el);
+    while (box.children.length > 3) box.firstElementChild.remove();
+    setTimeout(() => el.remove(), ms);
+  }
+
+  // ---------- audio (WebAudio, tanpa aset) ----------
+  let actx = null;
+  function beep(freq, dur, type = "square", gain = 0.05){
+    if (S && S.muted) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.value = gain;
+      o.connect(g); g.connect(actx.destination);
+      o.start(); 
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+      o.stop(actx.currentTime + dur);
+    } catch {}
+  }
+
+  // ---------- partikel & teks melayang ----------
+  const parts = [], floats = [];
+  function spawnParticles(tx, ty, color, n = 10){
+    for (let i = 0; i < n; i++){
+      parts.push({
+        x:(tx+0.5)*TS, y:(ty+0.5)*TS,
+        vx:(Math.random()-0.5)*140, vy:-Math.random()*160-30,
+        life:0.7, color
+      });
+    }
+  }
+  function floatText(tx, ty, text, color = "#ffd77a"){
+    floats.push({ x:(tx+0.5)*TS, y:(ty+0.3)*TS, text, color, life:1.1 });
+  }
+
+  // ---------- aksi ----------
+  function nearestTarget(){
+    const fx = Math.round(S.px), fy = Math.round(S.py);
+    const dirs = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };
+    const [dx,dy] = dirs[S.facing] || [0,1];
+    const cands = [[fx+dx, fy+dy], [fx, fy]];
+    for (const [x,y] of cands){
+      const t = tileAt(x,y);
+      if (!t || t.blocked) continue;
+      if (t.type === "tree" || t.type === "palm" || t.type === "sapling") return { x, y, t };
+    }
+    return null;
+  }
+
+  function chop(){
+    const tgt = nearestTarget();
+    if (!tgt){ toast("Nggak ada pohon di depan"); beep(120, .08, "sine", .03); return; }
+    const tool = TOOLS[S.tool];
+    const { x, y, t } = tgt;
+
+    if (t.type === "palm"){
+      if (t.grow >= GROW_STAGE[3]){
+        S.money += PANEN_HASIL; S.harvest++;
+        t.grow = GROW_STAGE[2] - 1;
+        floatText(x, y, "+" + PANEN_HASIL, "#8fd3ff");
+        spawnParticles(x, y, "#8fd3ff", 8);
+        beep(880, .12, "triangle", .06);
+        toast("Panen sawit: " + rupiah(PANEN_HASIL));
+        save(); paintHud();
+      } else {
+        toast("Belum siap panen (" + Math.max(0, Math.ceil(GROW_STAGE[3] - t.grow)) + " dtk lagi)");
+      }
+      return;
+    }
+    if (t.type === "sapling"){ toast("Masih bibit, tunggu tumbuh"); return; }
+
+    if (tool.perUse && S.money < tool.perUse){ toast("Uang tidak cukup untuk pakai " + tool.name); return; }
+    if (tool.perUse) S.money -= tool.perUse;
+
+    const area = (S.tool === "api" || S.tool === "traktor") ? 2 : 0;
+    let total = 0;
+    for (let yy = y - area; yy <= y + area; yy++){
+      for (let xx = x - area; xx <= x + area; xx++){
+        const tt = tileAt(xx,yy);
+        if (!tt || tt.type !== "tree") continue;
+        tt.hp -= tool.dmg;
+        if (tt.hp <= 0){
+          tt.type = "dirt"; tt.hp = 0; tt.grow = 0;
+          total++;
+          spawnParticles(xx, yy, "#3f9c63", S.tool === "traktor" ? 4 : 8);
+        }
+      }
+    }
+    if (total === 0 && S.tool !== "api" && S.tool !== "traktor"){
+      t.hp -= tool.dmg;
+      if (t.hp <= 0){ t.type = "dirt"; t.hp = 0; total = 1; spawnParticles(x, y, "#3f9c63", 8); }
+    }
+    if (total > 0){
+      const earn = total * TREE_VALUE;
+      S.money += earn; S.chopped += total;
+      floatText(x, y, "+" + earn, "#9fd6a8");
+      beep(220 + Math.random()*60, .09, "square", .05);
+      toast(total > 1 ? total + " pohon tumbang · " + rupiah(earn) : "Pohon tumbang · " + rupiah(earn), 1200);
+      maybeDemo();
+      save(); paintHud();
+    } else {
+      beep(140, .06, "sine", .03);
+    }
+  }
+
+  function plant(){
+    if (S.bibit <= 0){ toast("Bibit habis — beli dulu di Toko → Bibit"); beep(120,.1,"sine",.04); return; }
+    const x = Math.round(S.px), y = Math.round(S.py);
+    const t = tileAt(x,y);
+    if (!t || t.type !== "dirt"){ toast("Tanam di tanah kosong (hasil tebang)"); return; }
+    if (t.blocked){ toast("Petak ini diduduki warga yang demo"); return; }
+    t.type = "sapling"; t.grow = 0; t.blocked = 0;
+    S.bibit--;
+    beep(520, .1, "triangle", .05);
+    toast("Bibit sawit ditanam 🌱");
+    save(); paintHud();
+  }
+
+  function action(){
+    const tgt = nearestTarget();
+    if (tgt && (tgt.t.type === "tree" || tgt.t.type === "palm")) return chop();
+    return plant();
+  }
+
+  // ---------- demo warga ----------
+  function maybeDemo(){
+    if (S.demo) return;
+    if (S.chopped >= S.nextDemoAt){
+      const demand = 45 + Math.round(S.chopped * 1.5);
+      const blockers = [];
+      let tries = 0;
+      while (blockers.length < 3 && tries < 200){
+        tries++;
+        const x = 2 + Math.floor(Math.random()*(COLS-4));
+        const y = 2 + Math.floor(Math.random()*(ROWS-4));
+        const t = tileAt(x,y);
+        if (t && t.type === "dirt"){ t.blocked = 1; blockers.push([x,y]); }
+      }
+      S.demo = { demand, blockers, timer: 30 };
+      S.nextDemoAt = S.chopped + DEMO_EVERY;
+      toast("DEMO WARGA! Mereka minta " + rupiah(demand) + " — buka Toko → Warga", 4200);
+      beep(300, .18, "sawtooth", .05);
+      document.getElementById("s-tool").classList.add("alert");
+      paintHud();
+    }
+  }
+  function payDemo(){
+    if (!S.demo) return toast("Tidak ada demo warga");
+    if (S.money < S.demo.demand) return toast("Uang belum cukup: butuh " + rupiah(S.demo.demand));
+    S.money -= S.demo.demand;
+    S.demoPaid += S.demo.demand;
+    for (const [x,y] of S.demo.blockers){ const t = tileAt(x,y); if (t) t.blocked = 0; }
+    S.demo = null;
+    document.getElementById("s-tool").classList.remove("alert");
+    toast("Warga tenang. Terima kasih 🙏");
+    beep(660, .15, "triangle", .06);
+    save(); paintHud(); renderShop();
+  }
+
+  // ---------- shop ----------
+  let activeTab = "alat";
+  function buyTool(id){
+    if (S.owned[id]) return toast("Sudah punya " + TOOLS[id].name);
+    const t = TOOLS[id];
+    if (S.money < t.price) return toast("Uang belum cukup");
+    S.money -= t.price; S.owned[id] = true; S.tool = id;
+    toast(t.name + " dibeli & dipakai");
+    beep(740, .12, "square", .05);
+    save(); paintHud(); renderShop();
+  }
+  function useTool(id){ if (S.owned[id]){ S.tool = id; paintHud(); renderShop(); save(); } }
+  function buyBibit(n){
+    const cost = n * BIBIT_PRICE;
+    if (S.money < cost) return toast("Uang belum cukup");
+    S.money -= cost; S.bibit += n;
+    toast(n + " bibit sawit dibeli");
+    beep(600, .1, "triangle", .05);
+    save(); paintHud(); renderShop();
+  }
+
+  function renderShop(){
+    const list = document.getElementById("shop-list");
+    let html = "";
+    if (activeTab === "alat"){
+      html = ORDER.map(id => {
+        const t = TOOLS[id], owned = !!S.owned[id], active = S.tool === id;
+        const btn = active
+          ? `<button class="btn" disabled>Dipakai</button>`
+          : owned
+            ? `<button class="btn gold" data-use="${id}">Pakai</button>`
+            : `<button class="btn gold" data-buy="${id}" ${S.money < t.price ? "disabled" : ""}>Beli</button>`;
+        return `<div class="item"><div class="ico">${t.icon}</div>
+          <div class="body"><div class="name">${t.name}${owned ? " ✓" : ""}</div>
+          <div class="desc">${t.desc}</div>
+          <div class="price">${t.price ? rupiah(t.price) : "gratis"}</div></div>
+          <div class="buy">${btn}</div></div>`;
+      }).join("");
+    } else if (activeTab === "bibit"){
+      html = `<div class="item"><div class="ico">🌱</div><div class="body">
+        <div class="name">Bibit Sawit (punya ${S.bibit})</div>
+        <div class="desc">Tanam di tanah kosong. Panen ${rupiah(PANEN_HASIL)} per pohon. Tumbuh ±40 detik.</div>
+        <div class="price">${rupiah(BIBIT_PRICE)} / bibit</div></div>
+        <div class="buy" style="display:grid;gap:6px">
+          <button class="btn gold" data-bibit="1">Beli 1</button>
+          <button class="btn gold" data-bibit="5" ${S.money < BIBIT_PRICE*5 ? "disabled":""}>Beli 5</button>
+        </div></div>
+        <div class="item"><div class="ico">🌴</div><div class="body">
+        <div class="name">Kebun kamu</div>
+        <div class="desc">Sawit ditanam: ${S.palms} · sudah dipanen: ${S.harvest}</div>
+        <div class="price">${S.demo ? "Demo warga aktif!" : "Tidak ada demo"}</div></div></div>`;
+    } else {
+      html = S.demo
+        ? `<div class="item" style="border-color:#e07a5f"><div class="ico">📢</div><div class="body">
+             <div class="name">Demo warga</div>
+             <div class="desc">Mereka menutup ${S.demo.blockers.length} petak dan minta ganti rugi.
+             Sisa waktu ${Math.ceil(S.demo.timer)} dtk.</div>
+             <div class="price">${rupiah(S.demo.demand)}</div></div>
+             <div class="buy"><button class="btn gold" data-pay="1" ${S.money < S.demo.demand ? "disabled":""}>Bayar</button></div></div>`
+        : `<div class="item"><div class="ico">🤝</div><div class="body">
+             <div class="name">Warga sekitar</div>
+             <div class="desc">Total ganti rugi yang sudah kamu bayar: ${rupiah(S.demoPaid)}.
+             Demo berikutnya setelah ${S.nextDemoAt} pohon.</div></div></div>`;
+    }
+    list.innerHTML = html;
+    list.querySelectorAll("[data-buy]").forEach(b => b.onclick = () => buyTool(b.dataset.buy));
+    list.querySelectorAll("[data-use]").forEach(b => b.onclick = () => useTool(b.dataset.use));
+    list.querySelectorAll("[data-bibit]").forEach(b => b.onclick = () => buyBibit(+b.dataset.bibit));
+    list.querySelectorAll("[data-pay]").forEach(b => b.onclick = () => payDemo());
+  }
+
+  // ---------- HUD ----------
+  function paintHud(){
+    document.getElementById("s-money").textContent = Math.round(S.money).toLocaleString("id-ID");
+    document.getElementById("s-chopped").textContent = S.chopped;
+    document.getElementById("s-palms").textContent = S.palms;
+    const tool = TOOLS[S.tool];
+    const el = document.getElementById("s-tool");
+    el.textContent = tool.name + (S.bibit ? " · bibit " + S.bibit : "");
+  }
+
+  // ---------- input ----------
+  const keys = new Set();
+  const DIRMAP = { ArrowUp:"up", w:"up", W:"up", ArrowDown:"down", s:"down", S:"down",
+                   ArrowLeft:"left", a:"left", A:"left", ArrowRight:"right", d:"right", D:"right" };
+  addEventListener("keydown", e => {
+    if (e.key === " "){ e.preventDefault(); action(); return; }
+    if (DIRMAP[e.key]){ S.facing = DIRMAP[e.key]; keys.add(DIRMAP[e.key]); }
+    if (e.key === "p" || e.key === "P") toggleShop();
+  });
+  addEventListener("keyup", e => { if (DIRMAP[e.key]) keys.delete(DIRMAP[e.key]); });
+
+  document.querySelectorAll(".pad button").forEach(b => {
+    const dir = b.dataset.dir;
+    const on = e => { e.preventDefault(); S.facing = dir; keys.add(dir); };
+    const off = e => { e.preventDefault(); keys.delete(dir); };
+    b.addEventListener("touchstart", on, {passive:false});
+    b.addEventListener("touchend", off, {passive:false});
+    b.addEventListener("touchcancel", off, {passive:false});
+    b.addEventListener("mousedown", on);
+    b.addEventListener("mouseup", off);
+    b.addEventListener("mouseleave", off);
+  });
+  document.getElementById("btn-act").onclick = action;
+
+  function toggleShop(){
+    const s = document.getElementById("shop");
+    s.classList.toggle("open");
+    if (s.classList.contains("open")) renderShop();
+  }
+  document.getElementById("btn-shop").onclick = toggleShop;
+  document.getElementById("btn-close").onclick = toggleShop;
+  document.getElementById("btn-mute").onclick = e => {
+    S.muted = !S.muted;
+    e.currentTarget.textContent = S.muted ? "🔇" : "🔊";
+    save();
+  };
+  document.querySelectorAll(".tab").forEach(tb => tb.onclick = () => {
+    activeTab = tb.dataset.tab;
+    document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x === tb));
+    renderShop();
+  });
+  cv.addEventListener("pointerdown", e => {
+    const r = cv.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width * COLS;
+    const y = (e.clientY - r.top) / r.height * ROWS;
+    const dx = x - S.px, dy = y - S.py;
+    S.facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up");
+  });
+
+  // ---------- update ----------
+  function update(dt){
+    S.t += dt;
+    // gerak
+    let vx = 0, vy = 0;
+    if (keys.has("left")) vx -= 1;
+    if (keys.has("right")) vx += 1;
+    if (keys.has("up")) vy -= 1;
+    if (keys.has("down")) vy += 1;
+    if (vx || vy){
+      const len = Math.hypot(vx, vy) || 1;
+      const sp = 3.6 * dt;
+      const nx = S.px + vx/len*sp, ny = S.py + vy/len*sp;
+      if (!isSolid(tileAt(Math.round(nx), Math.round(S.py)))) S.px = clamp(nx, 0.5, COLS-0.5);
+      if (!isSolid(tileAt(Math.round(S.px), Math.round(ny)))) S.py = clamp(ny, 0.5, ROWS-0.5);
+      S.anim += dt*8;
+    }
+    // tumbuh
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++){
+      const t = S.tiles[y][x];
+      if (t.type === "sapling"){
+        t.grow += dt;
+        if (t.grow >= GROW_STAGE[3]){ t.type = "palm"; t.grow = GROW_STAGE[3]; S.palms++; }
+      } else if (t.type === "palm" && t.grow < GROW_STAGE[3]){
+        t.grow += dt;
+      }
+    }
+    // demo timer
+    if (S.demo){
+      S.demo.timer -= dt;
+      if (S.demo.timer <= 0){
+        // warga makin banyak kalau dibiarkan
+        let extra = 0, tries = 0;
+        while (extra < 2 && tries < 100){
+          tries++;
+          const x = 2 + Math.floor(Math.random()*(COLS-4)), y = 2 + Math.floor(Math.random()*(ROWS-4));
+          const t = tileAt(x,y);
+          if (t && t.type === "dirt" && !t.blocked){ t.blocked = 1; S.demo.blockers.push([x,y]); extra++; }
+        }
+        S.demo.timer = 25;
+        S.demo.demand = Math.round(S.demo.demand * 1.15);
+        toast("Demo makin ramai! Tuntutan naik jadi " + rupiah(S.demo.demand), 2600);
+        paintHud();
+      }
+    }
+    // partikel
+    for (let i = parts.length-1; i >= 0; i--){
+      const p = parts[i];
+      p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 420*dt; p.life -= dt;
+      if (p.life <= 0) parts.splice(i,1);
+    }
+    for (let i = floats.length-1; i >= 0; i--){
+      const f = floats[i];
+      f.y -= 44*dt; f.life -= dt;
+      if (f.life <= 0) floats.splice(i,1);
+    }
+  }
+
+  // ---------- render ----------
+  function drawTree(x, y, t){
+    const px = x*TS, py = y*TS;
+    ctx.fillStyle = "#6b4a2f";
+    ctx.fillRect(px+TS/2-4, py+TS*0.55, 8, TS*0.34);
+    const r = TS*0.30;
+    ctx.fillStyle = "#2f7d4f";
+    ctx.beginPath(); ctx.arc(px+TS/2, py+TS*0.45, r, 0, 7); ctx.fill();
+    ctx.fillStyle = "#3f9c63";
+    ctx.beginPath(); ctx.arc(px+TS/2-r*0.35, py+TS*0.38, r*0.72, 0, 7); ctx.fill();
+    if (t.hp < 3){
+      ctx.strokeStyle = "rgba(0,0,0,.35)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px+TS*0.35, py+TS*0.3);
+      ctx.lineTo(px+TS*0.6, py+TS*0.62); ctx.stroke();
+    }
+  }
+  function drawPalm(x, y, t){
+    const px = x*TS, py = y*TS;
+    const stage = t.grow >= GROW_STAGE[3] ? 3 : t.grow >= GROW_STAGE[2] ? 2 : 1;
+    const h = [0.25, 0.45, 0.62, 0.72][stage];
+    ctx.strokeStyle = "#8a6b46"; ctx.lineWidth = 6; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(px+TS/2, py+TS*0.9);
+    ctx.lineTo(px+TS/2, py+TS*(0.9-h)); ctx.stroke();
+    const cx = px+TS/2, cy = py+TS*(0.9-h);
+    ctx.strokeStyle = stage >= 2 ? "#3f9c63" : "#5aa86f"; ctx.lineWidth = 5;
+    for (let i = 0; i < 6; i++){
+      const a = (-Math.PI*0.9) + i*(Math.PI*0.3);
+      ctx.beginPath(); ctx.moveTo(cx, cy);
+      ctx.quadraticCurveTo(cx+Math.cos(a)*14, cy+Math.sin(a)*12, cx+Math.cos(a)*26, cy+Math.sin(a)*20);
+      ctx.stroke();
+    }
+    if (stage === 3){
+      ctx.fillStyle = "#f2b544";
+      ctx.beginPath(); ctx.arc(cx+4, cy+8, 4.5, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx-5, cy+10, 4, 0, 7); ctx.fill();
+    }
+  }
+  function drawPlayer(){
+    const px = S.px*TS, py = S.py*TS;
+    const bob = Math.sin(S.anim)*2;
+    ctx.save();
+    ctx.translate(px, py + bob*0.4);
+    // bayangan
+    ctx.fillStyle = "rgba(0,0,0,.25)";
+    ctx.beginPath(); ctx.ellipse(0, TS*0.34, TS*0.24, TS*0.10, 0, 0, 7); ctx.fill();
+    // badan
+    ctx.fillStyle = "#f2c14e";
+    ctx.beginPath(); ctx.roundRect(-TS*0.16, -TS*0.10, TS*0.32, TS*0.42, 8); ctx.fill();
+    // kepala
+    ctx.fillStyle = "#f7dca6";
+    ctx.beginPath(); ctx.arc(0, -TS*0.22, TS*0.15, 0, 7); ctx.fill();
+    // topi
+    ctx.fillStyle = "#2f7d4f";
+    ctx.beginPath(); ctx.arc(0, -TS*0.27, TS*0.15, Math.PI, 0); ctx.fill();
+    ctx.fillRect(-TS*0.20, -TS*0.27, TS*0.40, TS*0.05);
+    // mata arah
+    const d = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] }[S.facing];
+    ctx.fillStyle = "#1d1d1f";
+    ctx.beginPath(); ctx.arc(d[0]*3.5, -TS*0.20 + d[1]*2.5, 2.1, 0, 7); ctx.fill();
+    // alat di tangan
+    if (S.tool !== "kapak"){
+      ctx.font = "18px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(TOOLS[S.tool].icon, d[0]*16, TS*0.02 + d[1]*9);
+    }
+    ctx.restore();
+  }
+  function drawVillagers(){
+    if (!S.demo) return;
+    for (const [x,y] of S.demo.blockers){
+      ctx.fillStyle = "rgba(224,122,95,.30)";
+      ctx.fillRect(x*TS, y*TS, TS, TS);
+      ctx.fillStyle = "#e07a5f";
+      ctx.font = "26px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText("📢", x*TS+TS/2, y*TS+TS*0.62);
+    }
+  }
+
+  function render(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const scale = Math.min(window.innerWidth / W, window.innerHeight / H);
+    const cssW = Math.round(W*scale), cssH = Math.round(H*scale);
+    if (cv.width !== Math.round(cssW*dpr) || cv.height !== Math.round(cssH*dpr)){
+      cv.style.width = cssW+"px"; cv.style.height = cssH+"px";
+      cv.width = Math.round(cssW*dpr); cv.height = Math.round(cssH*dpr);
+    }
+    ctx.setTransform(dpr*scale, 0, 0, dpr*scale, 0, 0);
+
+    // tanah dasar
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++){
+      const t = S.tiles[y][x];
+      ctx.fillStyle = (x+y) % 2 ? "#2b5c3b" : "#2f6542";
+      if (t.type !== "tree") ctx.fillStyle = (x+y) % 2 ? "#7a5a3a" : "#83603d";
+      ctx.fillRect(x*TS, y*TS, TS, TS);
+      if (t.type !== "tree" && t.type !== "palm" && t.type !== "sapling"){
+        ctx.fillStyle = "rgba(0,0,0,.06)";
+        ctx.fillRect(x*TS+6, y*TS+8, TS-12, 4);
+      }
+    }
+    drawVillagers();
+    for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++){
+      const t = S.tiles[y][x];
+      if (t.type === "tree") drawTree(x, y, t);
+      else if (t.type === "sapling") drawPalm(x, y, t);
+      else if (t.type === "palm") drawPalm(x, y, t);
+    }
+    drawPlayer();
+
+    for (const p of parts){
+      ctx.globalAlpha = clamp(p.life/0.7, 0, 1);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, 4, 4);
+    }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = "center";
+    for (const f of floats){
+      ctx.globalAlpha = clamp(f.life/1.1, 0, 1);
+      ctx.fillStyle = f.color;
+      ctx.font = "bold 15px -apple-system,sans-serif";
+      ctx.fillText(f.text, f.x, f.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------- loop ----------
+  let last = performance.now(), acc = 0;
+  function frame(now){
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (!document.getElementById("shop").classList.contains("open")) update(dt);
+    else update(dt*0.35);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- debug/API (dipakai untuk test otomatis) ----------
+  window.NYAWIT = {
+    get state(){ return S; },
+    tick(seconds){ const step = 0.1; for (let i = 0; i < seconds/step; i++) update(step); },
+    chop, plant, action, payDemo, buyTool, buyBibit, useTool, save,
+    reset(){ S = newState(); save(); paintHud(); renderShop(); },
+  };
+
+  // ---------- boot ----------
+  S = load() || newState();
+  if (S.muted) document.getElementById("btn-mute").textContent = "🔇";
+  paintHud(); renderShop();
+  requestAnimationFrame(frame);
+  if (!localStorage.getItem(SAVE_KEY)) {
+    toast("Tebang pohon untuk dapat uang. Uang → bibit sawit → kebun 🌴", 4200);
+  }
+})();
+</script>
+</body>
+</html>
