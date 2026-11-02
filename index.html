@@ -107,6 +107,14 @@
     border-radius:999px;padding:6px 12px}
   .badge-wrap{text-align:center}
 
+  .switch{position:relative;display:inline-block;width:48px;height:29px;flex:none;vertical-align:middle}
+  .switch input{opacity:0;width:0;height:0;position:absolute}
+  .switch span{position:absolute;inset:0;background:#e3e3e8;border-radius:999px;transition:background .22s ease;cursor:pointer}
+  .switch span:before{content:"";position:absolute;width:25px;height:25px;left:2px;top:2px;background:#fff;
+    border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.22);transition:transform .22s ease}
+  .switch input:checked + span{background:#34c759}
+  .switch input:checked + span:before{transform:translateX(19px)}
+
   .toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(8px);
     background:rgba(29,29,31,.92);color:#fff;font-size:13.5px;font-weight:500;line-height:1.4;
     padding:11px 16px;border-radius:14px;max-width:min(90vw,420px);text-align:center;
@@ -154,6 +162,13 @@
               <select id="format"><option value="image/jpeg">JPG</option><option value="image/png">PNG</option></select>
             </div>
             <div class="row"><label>Kualitas JPG</label><input id="quality" type="number" value="92" min="60" max="100"></div>
+            <div class="row"><label>Kompres di bawah</label>
+              <span style="display:flex;align-items:center;gap:10px">
+                <input id="maxmb" type="number" value="2" min="0.2" max="10" step="0.1" style="width:74px">
+                <span style="font-size:13.5px;color:var(--text3)">MB</span>
+                <label class="switch"><input id="compress" type="checkbox" checked><span></span></label>
+              </span>
+            </div>
           </div>
         </details>
       </section>
@@ -172,7 +187,7 @@
           <button id="all" class="btn small" disabled>Simpan semua</button>
         </div>
       </div>
-      <p class="note">Di iPhone/Android tombol Simpan membuka menu berbagi → pilih <b>Simpan Gambar</b>. Kalau menu tidak muncul, tekan &amp; tahan gambarnya lalu pilih “Simpan ke Foto”.</p>
+      <p class="note">Di iPhone/Android tombol Simpan membuka menu berbagi → pilih <b>Simpan Gambar</b>. Di Mac/PC file langsung terunduh ke folder Download. Kompres otomatis berlaku untuk format <b>JPG</b>.</p>
     </aside>
   </div>
 </div>
@@ -186,6 +201,7 @@
   const drop = $('drop'), fileInput = $('file'), listEl = $('list'), previewEl = $('preview');
   const metaL = $('metaL'), metaR = $('metaR'), bgcolor = $('bgcolor'), padEl = $('pad');
   const formatEl = $('format'), qualityEl = $('quality');
+  const compressEl = $('compress'), maxMbEl = $('maxmb');
   const saveBtn = $('save'), saveSticky = $('saveSticky'), allBtn = $('all'), clearBtn = $('clear');
 
   const items = [];
@@ -194,6 +210,7 @@
 
   const UA = navigator.userAgent || '';
   const isIOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(UA);
   const inApp = /(FBAN|FBAV|Instagram|Telegram|Line\/|MicroMessenger|Twitter)/i.test(UA);
 
   function computeLayout(sw, sh, m, padPct) {
@@ -231,7 +248,7 @@
     document.querySelectorAll('#mode .btn').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     items.forEach(it => { if (it.file) convert(it); });
   }));
-  [padEl, bgcolor, formatEl, qualityEl].forEach(el =>
+  [padEl, bgcolor, formatEl, qualityEl, compressEl, maxMbEl].forEach(el =>
     el.addEventListener('change', () => items.forEach(it => { if (it.file) convert(it); })));
 
   clearBtn.addEventListener('click', () => {
@@ -286,6 +303,26 @@
     catch { return await createImageBitmap(file); }
   }
 
+  const toBlobP = (cv, type, q) => new Promise((res, rej) =>
+    cv.toBlob(b => b ? res(b) : rej(new Error('toBlob gagal')), type, q));
+
+  // Encode JPEG dengan kualitas tertinggi yang ukurannya masih di bawah target.
+  async function encodeCanvas(cv, type, startQ, targetBytes) {
+    const first = await toBlobP(cv, type, type === 'image/png' ? undefined : startQ);
+    if (!targetBytes || first.size <= targetBytes) return { blob: first, q: startQ, over: false };
+    let lo = 0.3, hi = startQ, best = null, bestQ = startQ;
+    for (let i = 0; i < 7; i++) {
+      const mid = Math.round(((lo + hi) / 2) * 100) / 100;
+      const b = await toBlobP(cv, type, mid);
+      if (b.size <= targetBytes) { best = b; bestQ = mid; lo = mid; }
+      else { hi = mid; }
+      if (hi - lo < 0.02) break;
+    }
+    if (best) return { blob: best, q: Math.round(bestQ * 100) / 100, over: false };
+    const floor = await toBlobP(cv, type, 0.3);
+    return { blob: floor, q: 0.3, over: floor.size > targetBytes };
+  }
+
   async function convert(it) {
     try {
       const bmp = await decode(it.file);
@@ -308,21 +345,30 @@
       if (mode === 'cover') ctx.restore();
       bmp.close && bmp.close();
 
-      const type = formatEl.value;
-      const q = Math.min(1, Math.max(0.5, (Number(qualityEl.value) || 92) / 100));
-      const blob = await new Promise((res, rej) =>
-        cv.toBlob(b => b ? res(b) : rej(new Error('toBlob gagal')), type, q));
+      const chosen = formatEl.value;
+      const compress = compressEl.checked;
+      const targetMB = Math.min(10, Math.max(0.2, Number(maxMbEl.value) || 2));
+      const type = chosen;
+      const startQ = Math.min(1, Math.max(0.4, (Number(qualityEl.value) || 92) / 100));
+      const enc = await encodeCanvas(cv, type, startQ,
+        compress && type === 'image/jpeg' ? targetMB * 1024 * 1024 : 0);
+      const blob = enc.blob;
 
       if (it.url) URL.revokeObjectURL(it.url);
       it.blob = blob;
       it.url = URL.createObjectURL(blob);
       it.srcW = srcW; it.srcH = srcH; it.drawW = L.dw; it.drawH = L.dh;
       it.filename = it.name + '_feed' + (type === 'image/png' ? '.png' : '.jpg');
+      it.size = blob.size;
+      it.quality = enc.q;
       it.done = true;
+
+      const kb = Math.round(blob.size / 1024);
+      const sizeTxt = kb > 1024 ? (kb / 1024).toFixed(2) + ' MB' : kb + ' KB';
 
       const row = it.row;
       row.querySelector('img').src = it.url;
-      row.querySelector('.sub').textContent = srcW + '×' + srcH + ' → 1080×1350';
+      row.querySelector('.sub').textContent = srcW + '×' + srcH + ' → 1080×1350 · ' + sizeTxt;
       row.querySelector('.go').disabled = false;
 
       current = it;
@@ -340,7 +386,8 @@
     img.src = it.url; img.alt = it.filename;
     previewEl.appendChild(img);
     metaL.textContent = 'Asli ' + it.srcW + ' × ' + it.srcH;
-    metaR.textContent = '1080 × 1350';
+    const kb = Math.round(it.blob.size / 1024);
+    metaR.textContent = '1080 × 1350 · ' + (kb > 1024 ? (kb / 1024).toFixed(2) + ' MB' : kb + ' KB');
   }
 
   function toFile(it) {
@@ -351,8 +398,11 @@
   async function saveItem(it) {
     if (!it || !it.done) return;
     const file = toFile(it);
+    const mobile = isIOS || isAndroid;
 
-    if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    // Menu berbagi hanya untuk mobile. Di macOS/desktop Safari share sheet bikin repot:
+    // user minta file langsung tersimpan, jadi desktop selalu lewat download.
+    if (mobile && file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file], title: it.filename });
         toast('Menu berbagi dibuka — pilih Simpan Gambar');
@@ -362,11 +412,12 @@
       }
     }
 
-    if (!isIOS) {
+    if (!isIOS || !mobile) {
       const a = document.createElement('a');
       a.href = it.url; a.download = it.filename; a.rel = 'noopener';
       document.body.appendChild(a); a.click(); a.remove();
-      toast('File diunduh — cek folder Download');
+      const kb = Math.round(it.blob.size / 1024);
+      toast('Tersimpan: ' + it.filename + ' (' + (kb > 1024 ? (kb / 1024).toFixed(2) + ' MB' : kb + ' KB') + ')');
       return;
     }
     openSheet(it);

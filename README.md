@@ -10,11 +10,13 @@ Buka `index.html` di browser (atau versi online). Pilih/tarik poster → hasil m
 - Bisa banyak file sekaligus
 - Mode **Utuh** (contain, default) atau **Penuh** (cover, crop tepi)
 - Background bisa diganti, margin dalam 0–20%, output JPG/PNG + kualitas
+- **Kompres otomatis** — output JPG diturunkan kualitasnya (binary search) sampai di bawah batas, default 2 MB
 - EXIF orientasi HP otomatis diputar benar
 - Semua proses lokal di browser — tidak ada file yang diunggah ke server
 
-### Menyimpan di HP
+### Menyimpan
 - **iPhone/Android:** tombol Simpan membuka menu berbagi → pilih **Simpan Gambar**
+- **Mac/PC:** file langsung terunduh ke folder Download (tidak lewat share sheet)
 - **iPhone tanpa share support / browser in-app:** terbuka layar penuh → tekan & tahan gambar → **Simpan ke Foto**
 - Browser dalam Telegram/Instagram memblokir download — buka dulu di Safari/Chrome
 
