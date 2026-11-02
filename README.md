@@ -1,3 +1,5 @@
+INI TOOLS WEB REQ BY ME DAN DI BUAT OTOMATIS SAMA HERMES AGENT DAWG KWKKWKWKW, TANPA NYENTUH IDE, JUST 2X PROMNT
+
 # Poster → Feed 4:5
 
 Utilitas satu file untuk mengubah poster ukuran apa pun jadi kanvas putih **1080 × 1350 px (4:5)** siap posting Instagram feed. Poster tetap utuh (tanpa crop) — sisa ruang otomatis putih.
