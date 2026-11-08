@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<title>Markdown → PDF</title>
+<style>
+  :root{
+    --bg:#f5f5f7; --card:#fff; --text:#1d1d1f; --text2:#6e6e73; --text3:#86868b;
+    --line:rgba(0,0,0,.09); --fill:#f2f2f5; --accent:#0071e3; --accent-press:#0062c4;
+    --radius:22px; --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 28px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Inter,Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;letter-spacing:-.01em}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 20px 80px}
+  header{text-align:center;margin-bottom:26px}
+  header h1{font-size:clamp(26px,5vw,38px);line-height:1.08;font-weight:700;letter-spacing:-.03em;margin:0 0 10px}
+  header p{margin:0 auto;max-width:520px;font-size:15px;line-height:1.5;color:var(--text2)}
+  .nav{display:flex;justify-content:center;gap:8px;margin:16px 0 0}
+  .nav a{font-size:13px;font-weight:600;text-decoration:none;color:var(--accent);
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 14px}
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:20px;align-items:start;margin-top:22px}
+  @media (max-width:860px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px}
+  textarea{width:100%;min-height:46vh;resize:vertical;border:1px solid var(--line);border-radius:14px;
+    background:#fafafc;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:13px;line-height:1.55;padding:14px}
+  textarea:focus{outline:none;border-color:#9cc4f5;background:#fff}
+  #drop{border:1.5px dashed #d2d2d7;border-radius:14px;background:#fafafc;padding:20px 14px;text-align:center;
+    cursor:pointer;margin-bottom:12px;transition:.15s}
+  #drop:hover,#drop.over{border-color:var(--accent);background:#f2f7ff}
+  #drop b{display:block;font-size:14px}
+  #drop span{font-size:12.5px;color:var(--text3)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;
+    border-top:1px solid var(--line)}
+  .row:first-child{border-top:0}
+  .row label{font-size:14px}
+  select,input[type=number]{font:inherit;font-size:14px;color:var(--text);background:var(--fill);
+    border:0;border-radius:10px;padding:8px 12px;appearance:none;text-align:right}
+  .btn{font:inherit;font-size:15px;font-weight:600;border-radius:14px;border:1px solid var(--line);
+    background:#fff;color:var(--text);padding:14px 18px;cursor:pointer;width:100%;transition:.15s}
+  .btn:active{transform:scale(.985)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent-press)}
+  .btn:disabled{opacity:.45}
+  .meta{font-size:12.5px;color:var(--text3);margin-top:10px;text-align:center;line-height:1.5}
+  .preview{max-height:52vh;overflow:auto;background:#fafafc;border:1px solid var(--line);
+    border-radius:14px;padding:14px;font-size:13px;line-height:1.55}
+  .preview h1,.preview h2,.preview h3{margin:.6em 0 .35em;line-height:1.25}
+  .preview h1{font-size:20px} .preview h2{font-size:16px} .preview h3{font-size:14px}
+  .preview p{margin:.5em 0}
+  .preview ul{margin:.4em 0;padding-left:20px}
+  .preview code{background:#eeeef2;border-radius:4px;padding:1px 4px;font-size:12px}
+  .preview pre{background:#eeeef2;border-radius:8px;padding:10px;overflow:auto;font-size:12px}
+  .preview blockquote{border-left:3px solid #d2d2d7;margin:.6em 0;padding-left:12px;color:var(--text2)}
+  .preview table{border-collapse:collapse;font-size:12px}
+  .preview td,.preview th{border:1px solid #e0e0e5;padding:4px 8px}
+  .hint{font-size:12.5px;color:var(--text3);line-height:1.55;margin:12px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Markdown → PDF</h1>
+    <p>Tempel atau tarik file <code>.md</code> — langsung jadi PDF rapi, tanpa upload ke server. Semua proses di browser kamu.</p>
+    <nav class="nav">
+      <a href="./">← Poster 4:5</a>
+    </nav>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div id="drop">
+        <b>Pilih file .md</b>
+        <span>atau tarik ke sini · atau tempel markdown di kotak bawah</span>
+      </div>
+      <input id="file" type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
+      <textarea id="md" placeholder="# Judul dokumen
+
+Tulis atau tempel markdown di sini.
+
+- poin pertama
+- poin kedua
+
+> kutipan
+"></textarea>
+
+      <div class="row" style="margin-top:12px"><label>Ukuran kertas</label>
+        <select id="paper">
+          <option value="a4">A4 (210 × 297 mm)</option>
+          <option value="letter">Letter (8,5 × 11 in)</option>
+        </select>
+      </div>
+      <div class="row"><label>Ukuran teks</label>
+        <select id="size">
+          <option value="10.5">10,5 pt</option>
+          <option value="11" selected>11 pt</option>
+          <option value="12">12 pt</option>
+        </select>
+      </div>
+      <div class="row"><label>Nomor halaman</label>
+        <select id="pagenum"><option value="1" selected>Aktif</option><option value="0">Tanpa</option></select>
+      </div>
+
+      <div style="margin-top:14px;display:grid;gap:10px">
+        <button class="btn primary" id="go">Buat PDF</button>
+        <button class="btn" id="clear">Bersihkan</button>
+      </div>
+      <div class="meta" id="meta">Belum ada PDF.</div>
+      <p class="hint">Didukung: heading (#, ##, ###), paragraf, bullet, daftar bernomor, <b>tebal</b>,
+        <code>kode inline</code>, blok kode, kutipan, garis pemisah, tabel sederhana, dan link.</p>
+    </section>
+
+    <aside class="card">
+      <div style="font-size:13px;font-weight:700;margin-bottom:8px">Pratinjau</div>
+      <div class="preview" id="preview"><span style="color:#86868b">Pratinjau muncul di sini…</span></div>
+      <div class="meta" id="stats"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  // ===================================================================
+  // 1) Parser markdown sederhana → blok
+  // ===================================================================
+  const stripEmoji = s => s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{1F000}-\u{1F2FF}]/gu, "");
+
+  function parseInline(text){
+    // hasil: [{text, bold, code}]
+    const runs = [];
+    const re = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g;
+    let last = 0, m;
+    while ((m = re.exec(text))){
+      if (m.index > last) runs.push({ text: text.slice(last, m.index), bold:false, code:false });
+      const tok = m[0];
+      if (tok.startsWith("**")) runs.push({ text: tok.slice(2,-2), bold:true, code:false });
+      else if (tok.startsWith("`")) runs.push({ text: tok.slice(1,-1), bold:false, code:true });
+      else {
+        const mm = tok.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+        runs.push({ text: mm[1] + (mm[2] && !mm[2].startsWith("#") ? " (" + mm[2] + ")" : ""), bold:false, code:false });
+      }
+      last = re.lastIndex;
+    }
+    if (last < text.length) runs.push({ text: text.slice(last), bold:false, code:false });
+    return runs.length ? runs : [{ text, bold:false, code:false }];
+  }
+
+  function parseMarkdown(src){
+    const lines = stripEmoji(src.replace(/\r\n?/g,"\n").replace(/\u00a0/g," ")).split("\n");
+    const blocks = [];
+    let i = 0, para = [];
+
+    const flushPara = () => {
+      if (para.length){
+        blocks.push({ type:"p", runs: parseInline(para.join(" ").trim()) });
+        para = [];
+      }
+    };
+
+    while (i < lines.length){
+      let line = lines[i];
+      const t = line.trim();
+
+      if (/^```/.test(t)){
+        flushPara();
+        const code = [];
+        i++;
+        while (i < lines.length && !/^```/.test(lines[i].trim())) code.push(lines[i++]);
+        i++;
+        blocks.push({ type:"code", lines: code });
+        continue;
+      }
+      if (/^#{1,6}\s/.test(t)){
+        flushPara();
+        const level = t.match(/^#+/)[0].length;
+        blocks.push({ type: level<=1?"h1":level===2?"h2":"h3", runs: parseInline(t.replace(/^#+\s*/,"")) });
+        i++; continue;
+      }
+      if (/^([-*_])\1{2,}$/.test(t)){ flushPara(); blocks.push({type:"hr"}); i++; continue; }
+      if (/^>\s?/.test(t)){
+        flushPara();
+        const q = [];
+        while (i < lines.length && /^>\s?/.test(lines[i].trim())) q.push(lines[i++].trim().replace(/^>\s?/,""));
+        blocks.push({ type:"quote", runs: parseInline(q.join(" ")) });
+        continue;
+      }
+      if (/^[-*+]\s+/.test(t)){
+        flushPara();
+        const items = [];
+        while (i < lines.length && /^[-*+]\s+/.test(lines[i].trim()))
+          items.push(parseInline(lines[i++].trim().replace(/^[-*+]\s+/,"")));
+        blocks.push({ type:"ul", items });
+        continue;
+      }
+      if (/^\d+[.)]\s+/.test(t)){
+        flushPara();
+        const items = [];
+        while (i < lines.length && /^\d+[.)]\s+/.test(lines[i].trim()))
+          items.push(parseInline(lines[i++].trim().replace(/^\d+[.)]\s+/,"")));
+        blocks.push({ type:"ol", items });
+        continue;
+      }
+      // tabel markdown: | a | b |
+      if (/^\|.*\|$/.test(t)){
+        flushPara();
+        const rows = [];
+        while (i < lines.length && /^\|.*\|$/.test(lines[i].trim())){
+          const cells = lines[i].trim().replace(/^\||\|$/g,"").split("|").map(s=>s.trim());
+          if (!cells.every(c => /^-{2,}$/.test(c))) rows.push(cells);
+          i++;
+        }
+        blocks.push({ type:"table", rows });
+        continue;
+      }
+      if (t === ""){ flushPara(); i++; continue; }
+
+      para.push(t);
+      i++;
+    }
+    flushPara();
+    return blocks;
+  }
+
+  // ===================================================================
+  // 2) Generator PDF (tanpa library)
+  // ===================================================================
+  const PAGE = { a4:[595.28,841.89], letter:[612,792] };
+  const FONTS = { reg:["F1","Helvetica"], bold:["F2","Helvetica-Bold"], mono:["F3","Courier"] };
+
+  // Tabel lebar Helvetica (AFM, units/1000) — dipakai supaya hasil sama di semua device
+  const W_REG = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,
+    556,556,556,556,556,556,556,556,556,556,
+    278,278,584,584,584,556,1015,
+    667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,
+    278,278,278,469,556,333,
+    556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,
+    334,260,334,584];
+  const W_BOLD = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,
+    556,556,556,556,556,556,556,556,556,556,
+    333,333,584,584,584,611,975,
+    722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,
+    333,333,333,584,556,333,
+    556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,
+    389,280,389,584];
+  const MAP = { "→":"->", "←":"<-", "↑":"^", "↓":"v", "—":"-", "–":"-", "…":"...",
+                "“":'"', "”":'"', "‘":"'", "’":"'", "•":"-", "×":"x", "≈":"~", "≤":"<=", "≥":">=" };
+  function clean(str){
+    let s = String(str);
+    for (const k in MAP) s = s.split(k).join(MAP[k]);
+    return s.replace(/[^\x20-\x7E\u00A0-\u00FF]/g, "").replace(/[ \t]{2,}/g," ");
+  }
+  function measure(str, size, mode){
+    const s = clean(str);
+    if (!s) return 0;
+    let units = 0;
+    for (let i = 0; i < s.length; i++){
+      const c = s.charCodeAt(i);
+      if (mode === "mono") units += 600;
+      else if (c >= 32 && c <= 126) units += (mode === "bold" ? W_BOLD : W_REG)[c - 32];
+      else if (c >= 0xA0) units += (mode === "bold" ? 611 : 556);
+      else units += 278;
+    }
+    return units * size / 1000;
+  }
+  const charW = (ch, size, mode) => measure(ch, size, mode);
+  function esc(str){
+    return clean(str).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
+  }
+
+  function buildPDF(blocks, opts){
+    const [PW, PH] = PAGE[opts.paper] || PAGE.a4;
+    const M = 56, BODY = opts.size, LH = BODY * 1.42;
+    const maxW = PW - M*2;
+    const pages = [];
+    let ops = [], y = PH - M;
+
+    const newPage = () => { if (ops.length) pages.push(ops); ops = []; y = PH - M; };
+    const text = (str, x, ypos, size, font, gray) => {
+      if (!str) return;
+      ops.push(`BT ${gray!=null?`${gray} g`:""} /${font} ${size.toFixed(2)} Tf 1 0 0 1 ${x.toFixed(2)} ${ypos.toFixed(2)} Tm (${esc(str)}) Tj ET`);
+      if (gray!=null) ops.push("0 g");
+    };
+    const ensure = h => { if (y - h < M + 26) newPage(); };
+
+    // susun kata per baris (run-aware)
+    function layoutRuns(runs, size, width){
+      const words = [];
+      for (const r of runs){
+        const parts = r.text.split(/(\s+)/);
+        for (const p of parts){
+          if (!p) continue;
+          if (/^\s+$/.test(p)) words.push({ space:true, mode:r.code?"mono":r.bold?"bold":"reg", size });
+          else words.push({ text:p, mode:r.code?"mono":r.bold?"bold":"reg", size });
+        }
+      }
+      const lines = [];
+      let cur = [], curW = 0;
+      for (const w of words){
+        const ww = w.space ? charW(" ", w.size, w.mode) : measure(w.text, w.size, w.mode);
+        if (!w.space && curW + ww > width && cur.length){ lines.push(cur); cur = []; curW = 0; }
+        if (w.space && cur.length === 0) continue;
+        cur.push({ ...w, w: ww }); curW += ww;
+      }
+      if (cur.length) lines.push(cur);
+      return lines;
+    }
+
+    function drawLine(line, x, ypos, gray){
+      let cx = x;
+      for (const w of line){
+        if (w.space){ cx += w.w; continue; }
+        const f = FONTS[w.mode] ? FONTS[w.mode][0] : "F1";
+        text(w.text, cx, ypos, w.size, f, gray != null ? gray : null);
+        cx += w.w;
+      }
+    }
+
+    for (const b of blocks){
+      if (b.type === "h1" || b.type === "h2" || b.type === "h3"){
+        const size = b.type === "h1" ? BODY*2.0 : b.type === "h2" ? BODY*1.42 : BODY*1.16;
+        const lines = layoutRuns(b.runs.map(r=>({...r, bold:true})), size, maxW);
+        y -= size*0.5;
+        for (const ln of lines){
+          ensure(size*1.4);
+          y -= size*1.18;
+          drawLine(ln, M, y, 0.08);
+        }
+        y -= size*0.28;
+        if (b.type === "h1"){
+          ops.push(`${(0.85)} G 0.8 w ${M} ${y.toFixed(2)} m ${(PW-M).toFixed(2)} ${y.toFixed(2)} l S`);
+          y -= BODY*0.6;
+        }
+      }
+      else if (b.type === "p"){
+        const lines = layoutRuns(b.runs, BODY, maxW);
+        for (const ln of lines){ ensure(LH); y -= LH; drawLine(ln, M, y); }
+        y -= BODY*0.42;
+      }
+      else if (b.type === "ul" || b.type === "ol"){
+        b.items.forEach((item, idx) => {
+          const indent = 18;
+          const marker = b.type === "ul" ? "•" : (idx+1) + ".";
+          const lines = layoutRuns(item, BODY, maxW - indent);
+          lines.forEach((ln, k) => {
+            ensure(LH); y -= LH;
+            if (k === 0) text(marker, M, y, BODY, "F1", 0.25);
+            drawLine(ln, M + indent, y);
+          });
+        });
+        y -= BODY*0.42;
+      }
+      else if (b.type === "quote"){
+        const lines = layoutRuns(b.runs, BODY, maxW - 16);
+        const top = y;
+        for (const ln of lines){ ensure(LH); y -= LH; drawLine(ln, M + 16, y, 0.35); }
+        ops.push(`0.8 G 2 w ${M+4} ${(y-BODY*0.3).toFixed(2)} m ${M+4} ${(top).toFixed(2)} l S 0 G`);
+        y -= BODY*0.5;
+      }
+      else if (b.type === "code"){
+        const size = Math.max(8, BODY - 1.5);
+        for (const raw of b.lines){
+          const lines = layoutRuns([{ text: raw || " ", bold:false, code:true }], size, maxW - 16);
+          for (const ln of lines){
+            ensure(size*1.45); y -= size*1.45;
+            drawLine(ln, M + 16, y, 0.2);
+          }
+        }
+        y -= BODY*0.5;
+      }
+      else if (b.type === "table"){
+        const size = Math.max(8, BODY - 1);
+        for (const row of b.rows){
+          const line = row.join("   |   ");
+          const lines = layoutRuns([{ text:line, bold:false, code:false }], size, maxW);
+          for (const ln of lines){ ensure(size*1.5); y -= size*1.5; drawLine(ln, M, y, 0.15); }
+        }
+        y -= BODY*0.5;
+      }
+      else if (b.type === "hr"){
+        ensure(BODY*2);
+        y -= BODY*0.8;
+        ops.push(`0.86 G 0.8 w ${M} ${y.toFixed(2)} m ${(PW-M).toFixed(2)} ${y.toFixed(2)} l S 0 G`);
+        y -= BODY*0.8;
+      }
+    }
+    if (ops.length) pages.push(ops);
+
+    // footer nomor halaman
+    if (opts.pagenum && pages.length){
+      pages.forEach((pg, i) => {
+        pg.push(`0.55 g BT /F1 8 Tf 1 0 0 1 ${(PW/2 - 12).toFixed(2)} 30 Tm (${i+1} / ${pages.length}) Tj ET 0 g`);
+      });
+    }
+
+    // ---- susun file PDF ----
+    const enc = new TextEncoder();
+    const objs = [];
+    const addObj = s => { objs.push(s); return objs.length; };   // 1-based
+
+    const fontIds = {};
+    Object.entries(FONTS).forEach(([k, v]) => { fontIds[v[0]] = addObj(`<< /Type /Font /Subtype /Type1 /BaseFont /${v[1]} /Encoding /WinAnsiEncoding >>`); });
+    const catalogId = objs.length + 1; objs.push("");           // placeholder
+    const pagesId = objs.length + 1; objs.push("");
+    const pageIds = [];
+    pages.forEach(pg => {
+      const stream = pg.join("\n");
+      const contentId = addObj(`<< /Length ${enc.encode(stream).length} >>\nstream\n${stream}\nendstream`);
+      const pageId = addObj(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 ${PW.toFixed(2)} ${PH.toFixed(2)}] ` +
+        `/Resources << /Font << /F1 ${fontIds.F1} 0 R /F2 ${fontIds.F2} 0 R /F3 ${fontIds.F3} 0 R >> >> ` +
+        `/Contents ${contentId} 0 R >>`);
+      pageIds.push(pageId);
+    });
+    objs[pagesId-1] = `<< /Type /Pages /Count ${pageIds.length} /Kids [${pageIds.map(i=>i+" 0 R").join(" ")}] >>`;
+    objs[catalogId-1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
+
+    let out = "%PDF-1.4\n";
+    const offsets = [];
+    objs.forEach((body, i) => {
+      offsets.push(enc.encode(out).length);
+      out += `${i+1} 0 obj\n${body}\nendobj\n`;
+    });
+    const xrefPos = enc.encode(out).length;
+    out += `xref\n0 ${objs.length+1}\n0000000000 65535 f \n`;
+    offsets.forEach(off => { out += String(off).padStart(10,"0") + " 00000 n \n"; });
+    out += `trailer\n<< /Size ${objs.length+1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefPos}\n%%EOF`;
+    return { text: out, pages: pages.length };
+  }
+
+  // ===================================================================
+  // 3) UI
+  // ===================================================================
+  const $ = id => document.getElementById(id);
+  const mdEl = $("md"), metaEl = $("meta"), statsEl = $("stats"), previewEl = $("preview");
+
+  function renderPreview(){
+    const blocks = parseMarkdown(mdEl.value || "");
+    const esc2 = s => s.replace(/[&<>]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));
+    const inlineHtml = runs => runs.map(r =>
+      r.code ? `<code>${esc2(r.text)}</code>` : r.bold ? `<b>${esc2(r.text)}</b>` : esc2(r.text)).join("");
+    let html = "";
+    for (const b of blocks){
+      if (b.type==="h1"||b.type==="h2"||b.type==="h3") html += `<${b.type}>${inlineHtml(b.runs)}</${b.type}>`;
+      else if (b.type==="p") html += `<p>${inlineHtml(b.runs)}</p>`;
+      else if (b.type==="ul"||b.type==="ol") html += `<${b.type}>` + b.items.map(it=>`<li>${inlineHtml(it)}</li>`).join("") + `</${b.type}>`;
+      else if (b.type==="quote") html += `<blockquote>${inlineHtml(b.runs)}</blockquote>`;
+      else if (b.type==="code") html += `<pre>${esc2(b.lines.join("\n"))}</pre>`;
+      else if (b.type==="table") html += "<table>" + b.rows.map(r=>"<tr>"+r.map(c=>`<td>${esc2(c)}</td>`).join("")+"</tr>").join("") + "</table>";
+      else if (b.type==="hr") html += "<hr>";
+    }
+    previewEl.innerHTML = html || '<span style="color:#86868b">Pratinjau muncul di sini…</span>';
+    const words = (mdEl.value.match(/\S+/g)||[]).length;
+    statsEl.textContent = mdEl.value.trim() ? `${words} kata · ${blocks.length} blok` : "";
+  }
+
+  mdEl.addEventListener("input", () => { clearTimeout(mdEl._t); mdEl._t = setTimeout(renderPreview, 180); });
+
+  $("drop").addEventListener("click", () => $("file").click());
+  ["dragover","dragenter"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.add("over"); }));
+  ["dragleave","drop"].forEach(ev => $("drop").addEventListener(ev, e => { e.preventDefault(); $("drop").classList.remove("over"); }));
+  $("drop").addEventListener("drop", e => {
+    const f = e.dataTransfer.files[0];
+    if (f) readFile(f);
+  });
+  $("file").addEventListener("change", e => { const f = e.target.files[0]; if (f) readFile(f); e.target.value=""; });
+
+  function readFile(f){
+    const r = new FileReader();
+    r.onload = () => { mdEl.value = r.result; renderPreview(); };
+    r.readAsText(f, "utf-8");
+  }
+
+  $("clear").addEventListener("click", () => { mdEl.value = ""; renderPreview(); metaEl.textContent = "Belum ada PDF."; });
+
+  $("go").addEventListener("click", () => {
+    const src = mdEl.value.trim();
+    if (!src) { metaEl.textContent = "Markdown masih kosong."; return; }
+    try {
+      const blocks = parseMarkdown(src);
+      const { text, pages } = buildPDF(blocks, {
+        paper: $("paper").value,
+        size: parseFloat($("size").value),
+        pagenum: $("pagenum").value === "1"
+      });
+      const blob = new Blob([text], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const name = (src.match(/^#\s+(.+)$/m)?.[1] || "dokumen")
+        .replace(/[:]/g, "-").replace(/[\\/*?"<>|]/g, "").replace(/\s+/g," ").slice(0,60).trim() || "dokumen";
+      a.href = url; a.download = name + ".pdf";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 4000);
+      const kb = Math.round(blob.size/1024);
+      metaEl.textContent = `PDF dibuat: ${pages} halaman · ${kb} KB · ${a.download}`;
+    } catch (err){
+      metaEl.textContent = "Gagal membuat PDF: " + err.message;
+      console.error(err);
+    }
+  });
+
+  renderPreview();
+})();
+</script>
+</body>
+</html>
