@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7">
+<title>Nomor WA → Link wa.me</title>
+<style>
+  :root{
+    --bg:#f5f5f7; --card:#ffffff; --text:#1d1d1f; --text2:#6e6e73; --text3:#86868b;
+    --line:rgba(0,0,0,.09); --fill:#f2f2f5; --accent:#0071e3; --accent-press:#0062c4;
+    --wa:#25d366; --wa-press:#1db958;
+    --radius:22px;
+    --shadow:0 1px 2px rgba(0,0,0,.04), 0 8px 28px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Inter,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;letter-spacing:-.01em}
+  .wrap{max-width:640px;margin:0 auto;padding:44px 20px 120px}
+  header{text-align:center;margin-bottom:30px}
+  header h1{font-size:clamp(28px,5vw,40px);line-height:1.08;font-weight:700;letter-spacing:-.03em;margin:0 0 10px}
+  header p{margin:0 auto;max-width:480px;font-size:15px;line-height:1.5;color:var(--text2)}
+  nav{display:flex;justify-content:center;gap:8px;margin-top:16px}
+  nav a{font-size:13px;font-weight:600;text-decoration:none;color:var(--accent);
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 14px}
+  .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px}
+
+  .field input{width:100%;font:inherit;font-size:19px;font-weight:600;letter-spacing:.02em;
+    color:var(--text);background:var(--fill);border:1.5px solid transparent;border-radius:16px;
+    padding:18px 16px;outline:none;transition:border-color .18s ease, background .18s ease}
+  .field input:focus{border-color:var(--accent);background:#fff}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .chips button{font:inherit;font-size:12.5px;color:var(--text2);background:#fafafc;
+    border:1px solid var(--line);border-radius:999px;padding:7px 12px;cursor:pointer;transition:.15s}
+  .chips button:hover{color:var(--text);border-color:#c7c7cc}
+
+  .result{display:none;margin-top:20px;border-top:1px solid var(--line);padding-top:18px}
+  .result.show{display:block}
+  .result .lbl{font-size:12.5px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+  .linkbox{display:flex;align-items:center;gap:10px;background:var(--fill);border:1px solid var(--line);
+    border-radius:14px;padding:10px 12px}
+  .linkbox code{flex:1;min-width:0;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    font-size:13.5px;color:var(--text);word-break:break-all;user-select:all;cursor:pointer}
+  .btn{font:inherit;font-size:14px;font-weight:600;border:0;border-radius:12px;padding:12px 16px;
+    cursor:pointer;flex:none;transition:transform .12s ease, opacity .18s}
+  .btn:active{transform:scale(.97)}
+  .btn.wa{background:var(--wa);color:#fff}
+  .btn.wa:hover{background:var(--wa-press)}
+  .btn.ghost{background:var(--fill);color:var(--text)}
+  .btn.full{width:100%;margin-top:12px}
+  .ok{display:none;font-size:13px;font-weight:500;color:#0a7138}
+  .ok.show{display:inline}
+  .err{display:none;font-size:12.5px;color:#c0392b;margin-top:10px}
+  .err.show{display:block}
+  .note{font-size:12.5px;line-height:1.55;color:var(--text3);margin:16px 0 0;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Nomor WA → Link</h1>
+    <p>Masukkan nomor HP/WA format apa pun. Otomatis jadi link <code>wa.me</code> siap bagikan.</p>
+    <nav>
+      <a href="index.html">Poster → Feed 4:5</a>
+      <a href="md2pdf.html">Markdown → PDF</a>
+    </nav>
+  </header>
+
+  <section class="card">
+    <div class="field">
+      <input id="phone" type="tel" inputmode="tel" autocomplete="tel"
+        placeholder="+62 817-7641-7093" spellcheck="false" autofocus>
+    </div>
+    <div class="chips" id="chips">
+      <button type="button">+62 817-7641-7093</button>
+      <button type="button">0817 7641 7093</button>
+      <button type="button">0895-1234-5678</button>
+      <button type="button">6281234567890</button>
+    </div>
+    <div class="err" id="err">Nomor tidak valid — cek lagi (8–15 digit).</div>
+
+    <div class="result" id="result">
+      <div class="lbl">Link WhatsApp</div>
+      <div class="linkbox">
+        <code id="out" title="Klik untuk salin"></code>
+        <button class="btn ghost" id="copy" type="button">Salin</button>
+        <button class="btn wa" id="open" type="button">Buka WhatsApp</button>
+      </div>
+      <button class="btn wa full" id="open2" type="button">Buka percakapan WhatsApp</button>
+    </div>
+    <p class="note">Nomor tanpa kode negara dianggap Indonesia (62).</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const input = $('phone'), out = $('out'), result = $('result'),
+        err = $('err'), copy = $('copy'), open = $('open'), open2 = $('open2');
+
+  // "+62 817-7641-7093" / "0817 7641 7093" / "6281776417093" → "6281776417093"
+  function normalize(raw) {
+    const digits = raw.replace(/[^\d]/g, '');
+    if (!digits) return null;
+    if (digits.startsWith('0')) return '62' + digits.slice(1);
+    if (digits.startsWith('62')) return digits;
+    return '62' + digits; // tanpa kode negara → Indonesia
+  }
+
+  function update() {
+    const num = normalize(input.value);
+    const valid = num && num.length >= 8 && num.length <= 15;
+    err.classList.toggle('show', !!input.value && !valid);
+    result.classList.toggle('show', valid);
+    if (valid) out.textContent = 'https://wa.me/' + num;
+    const b = result.classList.contains('show');
+    [copy, open, open2].forEach(x => x.disabled = !b);
+  }
+
+  function currentLink() { return out.textContent; }
+
+  input.addEventListener('input', update);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && result.classList.contains('show')) window.open(currentLink(), '_blank', 'noopener');
+  });
+
+  document.querySelectorAll('#chips button').forEach(b =>
+    b.addEventListener('click', () => { input.value = b.textContent; update(); input.focus(); }));
+
+  copy.addEventListener('click', async () => {
+    if (!currentLink()) return;
+    try { await navigator.clipboard.writeText(currentLink()); }
+    catch {
+      const t = document.createElement('textarea');
+      t.value = currentLink(); document.body.appendChild(t); t.select();
+      document.execCommand('copy'); t.remove();
+    }
+    flash(copy, 'Tersalin ✓');
+  });
+  out.addEventListener('click', () => copy.click());
+
+  open.addEventListener('click', () => window.open(currentLink(), '_blank', 'noopener'));
+  open2.addEventListener('click', () => window.open(currentLink(), '_blank', 'noopener'));
+
+  function flash(btn, txt) {
+    const old = btn.textContent;
+    btn.textContent = txt;
+    setTimeout(() => btn.textContent = old, 1400);
+  }
+
+  update();
+})();
+</script>
+</body>
+</html>
